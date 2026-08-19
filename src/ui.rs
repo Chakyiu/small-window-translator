@@ -245,8 +245,13 @@ pub fn icon_btn(
         .justify_center()
         .text_sm()
         .cursor_pointer()
-        .text_color(if active { theme::accent() } else { theme::muted() })
-        .hover(|s| s.bg(theme::field()).text_color(theme::text()))
+        .bg(if active { theme::accent() } else { theme::bg() })
+        .text_color(if active { theme::text() } else { theme::muted() })
+        .hover(|s| {
+            s.bg(if active { theme::accent() } else { theme::field() })
+                .text_color(theme::text())
+                .opacity(if active { 0.9 } else { 1.0 })
+        })
         .on_mouse_up(gpui::MouseButton::Left, handler)
         .child(glyph.into())
 }

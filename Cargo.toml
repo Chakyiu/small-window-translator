@@ -1,6 +1,6 @@
 [package]
 name = "swtrans"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "Small Window Translator — select-text translator for macOS, Windows, and Linux"
 license = "MIT OR Apache-2.0"
@@ -12,15 +12,20 @@ directories = "6"
 enigo = "0.6"
 global-hotkey = "0.8"
 on-selected-text = "0.1.6"
-cpal = "0.15"
+cpal = "0.18.2"
 hound = "3.5"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "blocking",
+    "json",
+    "multipart",
+    "rustls-tls",
+] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-toml = "0.8"
+toml = "1.1"
 tray-icon = "0.24"
 urlencoding = "2"
-whatlang = "0.16"
+whatlang = "0.18"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 gpui = { version = "0.2.2", features = ["macos-blade"] }

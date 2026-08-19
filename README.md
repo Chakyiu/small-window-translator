@@ -69,7 +69,7 @@ On macOS, `gpui` is built with the `macos-blade` backend so you do not need a fu
 | **🔊**  | Speak source or a translation                                          |
 | **🎤**  | Speech-to-text (needs an OpenAI-compatible key or a local Whisper URL) |
 | **☰**  | Settings (same window)                                                 |
-| **◉**   | Pin — keep the popup open                                              |
+| **📌**  | Pin — keep the popup open                                              |
 | **Esc** | Close (or go back from Settings)                                       |
 
 ### Permissions

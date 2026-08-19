@@ -3,6 +3,7 @@ use crate::permissions;
 use crate::theme;
 use crate::translate;
 use crate::ui;
+use crate::update;
 use crate::AppCommand;
 use gpui::{
     App, Context, EventEmitter, FocusHandle, Focusable, KeyBinding, KeyDownEvent, SharedString,
@@ -57,6 +58,10 @@ pub struct SettingsView {
     permission_ok: bool,
     tx: Sender<AppCommand>,
     embedded: bool,
+    update_checking: bool,
+    update_message: SharedString,
+    update_url: Option<String>,
+    update_open_label: Option<&'static str>,
 }
 
 impl EventEmitter<SettingsEvent> for SettingsView {}
@@ -90,15 +95,27 @@ impl SettingsView {
             status: SharedString::from("Ready"),
             tx,
             embedded,
+            update_checking: false,
+            update_message: SharedString::from(format!(
+                "Installed version {}",
+                update::current_version()
+            )),
+            update_url: None,
+            update_open_label: None,
         }
     }
 
     fn close(&mut self, _: &CloseSettings, window: &mut Window, cx: &mut Context<Self>) {
         if self.embedded {
+            let _ = self.tx.send(AppCommand::CloseEmbeddedSettings);
             cx.emit(SettingsEvent::Dismiss);
             return;
         }
         window.remove_window();
+    }
+
+    fn close_click(&mut self, _: &gpui::MouseUpEvent, window: &mut Window, cx: &mut Context<Self>) {
+        self.close(&CloseSettings, window, cx);
     }
 
     fn save_action(&mut self, _: &SaveSettings, _window: &mut Window, cx: &mut Context<Self>) {
@@ -151,6 +168,51 @@ impl SettingsView {
         self.permission = SharedString::from(perm.message);
         self.permission_ok = perm.accessibility_ok;
         cx.notify();
+    }
+
+    fn check_update(&mut self, _: &gpui::MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.update_checking {
+            return;
+        }
+        self.update_checking = true;
+        self.update_message = "Checking for updates…".into();
+        self.update_url = None;
+        self.update_open_label = None;
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async { update::check() })
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                this.update_checking = false;
+                match result {
+                    Ok(outcome) => {
+                        this.update_url = outcome.open_url().map(str::to_string);
+                        this.update_open_label = outcome.open_label();
+                        this.update_message = outcome.message().into();
+                    }
+                    Err(err) => {
+                        this.update_url = None;
+                        this.update_open_label = None;
+                        this.update_message = format!("Update check failed: {err}").into();
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    fn open_update_page(
+        &mut self,
+        _: &gpui::MouseUpEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(url) = &self.update_url {
+            cx.open_url(url);
+        }
     }
 
     fn go_page(&mut self, page: Page, cx: &mut Context<Self>) {
@@ -220,7 +282,18 @@ impl SettingsView {
         cx.notify();
     }
 
-    fn on_key(&mut self, ev: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+    fn on_key(&mut self, ev: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        let key = ev.keystroke.key.as_str();
+        if key == "escape" {
+            if self.recording {
+                self.recording = false;
+                self.status = "Cancelled".into();
+                cx.notify();
+                return;
+            }
+            self.close(&CloseSettings, window, cx);
+            return;
+        }
         if self.recording {
             if let Some(spec) = keystroke_to_hotkey(&ev.keystroke) {
                 self.config.hotkey = spec;
@@ -232,7 +305,6 @@ impl SettingsView {
             return;
         }
 
-        let key = ev.keystroke.key.as_str();
         if key == "tab" {
             self.active = next_field(self.active, self.page);
             cx.notify();
@@ -336,8 +408,22 @@ impl SettingsView {
                 div()
                     .px_3()
                     .pb_3()
-                    .child(ui::heading("swtrans"))
-                    .child(ui::subtitle("Settings")),
+                    .flex()
+                    .flex_row()
+                    .justify_between()
+                    .items_start()
+                    .child(
+                        div()
+                            .child(ui::heading("swtrans"))
+                            .child(ui::subtitle("Settings"))
+                            .child(ui::subtitle(format!("v{}", update::current_version()))),
+                    )
+                    .child(ui::icon_btn(
+                        "settings-close",
+                        "✕",
+                        false,
+                        cx.listener(Self::close_click),
+                    )),
             )
             .when(self.embedded, |el| {
                 el.child(ui::ghost_button(
@@ -441,6 +527,34 @@ impl SettingsView {
                         &self.config.target_lang,
                     )))
                     .child(language_chips(&self.config.target_lang, cx)),
+            )
+            .child(
+                ui::card()
+                    .child(ui::label("UPDATES"))
+                    .child(ui::subtitle(self.update_message.clone().to_string()))
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .flex_wrap()
+                            .gap_2()
+                            .child(ui::ghost_button(
+                                "check-update",
+                                if self.update_checking {
+                                    "Checking…"
+                                } else {
+                                    "Check for update"
+                                },
+                                cx.listener(Self::check_update),
+                            ))
+                            .when(self.update_url.is_some(), |el| {
+                                el.child(ui::primary_button(
+                                    "open-update",
+                                    self.update_open_label.unwrap_or("Open download page"),
+                                    cx.listener(Self::open_update_page),
+                                ))
+                            }),
+                    ),
             )
     }
 
@@ -639,6 +753,11 @@ impl SettingsView {
                     .gap_2()
                     .items_center()
                     .child(ui::subtitle(if self.dirty { "Unsaved" } else { "" }))
+                    .child(ui::ghost_button(
+                        "settings-footer-close",
+                        if self.embedded { "Back" } else { "Close" },
+                        cx.listener(Self::close_click),
+                    ))
                     .child(ui::primary_button(
                         "save",
                         "Save",

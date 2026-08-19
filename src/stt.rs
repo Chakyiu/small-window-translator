@@ -26,7 +26,7 @@ impl Session {
         let supported = device
             .default_input_config()
             .context("Could not read microphone format")?;
-        let sample_rate = supported.sample_rate().0;
+        let sample_rate = supported.sample_rate();
         let channels = supported.channels() as usize;
         let stop = Arc::new(AtomicBool::new(false));
         let samples = Arc::new(Mutex::new(Vec::new()));
@@ -147,7 +147,7 @@ where
     let samples = samples.clone();
     device
         .build_input_stream(
-            config,
+            *config,
             move |data: &[T], _| {
                 if stop.load(Ordering::Relaxed) {
                     return;

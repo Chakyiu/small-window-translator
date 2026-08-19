@@ -12,6 +12,7 @@ mod theme;
 mod translate;
 mod tts;
 mod ui;
+mod update;
 
 pub use command::AppCommand;
 

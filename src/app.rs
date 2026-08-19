@@ -170,6 +170,13 @@ impl Hub {
                 source_lang,
                 target_lang,
             } => self.retranslate(text, source_lang, target_lang, cx),
+            AppCommand::CloseEmbeddedSettings => {
+                if let Some(popup) = self.popup {
+                    let _ = popup.update(cx, |view, window, cx| {
+                        view.hide_settings(window, cx);
+                    });
+                }
+            }
             AppCommand::ReloadConfig => {
                 self.config = Config::load();
                 if let Some(manager) = self._hotkeys.as_ref() {

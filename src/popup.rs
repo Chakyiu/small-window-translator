@@ -52,6 +52,7 @@ pub struct PopupView {
     can_dismiss: bool,
     tx: Sender<AppCommand>,
     show_settings: bool,
+    pinned_before_settings: bool,
     settings: Option<Entity<SettingsView>>,
     _settings_sub: Option<Subscription>,
     recording: bool,
@@ -126,6 +127,7 @@ impl PopupView {
             can_dismiss: false,
             tx,
             show_settings: false,
+            pinned_before_settings: false,
             settings: None,
             _settings_sub: None,
             recording: false,
@@ -194,7 +196,7 @@ impl PopupView {
 
     pub fn show_embedded_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.can_dismiss = false;
-        self.pinned = true;
+        self.pinned_before_settings = self.pinned;
         self.picker = Picker::None;
         let config = Config::load();
         let tx = self.tx.clone();
@@ -216,13 +218,24 @@ impl PopupView {
         cx.notify();
     }
 
-    fn hide_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn hide_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.show_settings {
+            return;
+        }
         self.show_settings = false;
         self.settings = None;
         self._settings_sub = None;
+        self.pinned = self.pinned_before_settings;
         window.resize(size(px(theme::POPUP_WIDTH), px(theme::POPUP_HEIGHT)));
         window.focus(&self.focus);
         cx.notify();
+        cx.spawn(async move |this, cx| {
+            Timer::after(Duration::from_millis(280)).await;
+            let _ = this.update(cx, |this, _cx| {
+                this.can_dismiss = true;
+            });
+        })
+        .detach();
     }
 
     fn copy_query(&mut self, _: &gpui::MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
@@ -512,7 +525,14 @@ impl Render for PopupView {
                     .key_context("Popup")
                     .track_focus(&self.focus)
                     .on_action(cx.listener(Self::dismiss))
-                    .child(settings)
+                    .child(self.settings_chrome(cx))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_h(px(0.))
+                            .w_full()
+                            .child(settings),
+                    )
                     .into_any_element();
             }
         }
@@ -541,6 +561,26 @@ impl Render for PopupView {
 }
 
 impl PopupView {
+    fn settings_chrome(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_row()
+            .justify_between()
+            .items_center()
+            .px_3()
+            .pt_2()
+            .pb_1()
+            .child(ui::subtitle("Settings"))
+            .child(ui::icon_btn(
+                "close-embedded-settings",
+                "✕",
+                false,
+                cx.listener(|this, _, window, cx| {
+                    this.hide_settings(window, cx);
+                }),
+            ))
+    }
+
     fn chrome(&self, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .flex()
@@ -552,7 +592,7 @@ impl PopupView {
             .pb_1()
             .child(ui::icon_btn(
                 "pin",
-                if self.pinned { "◉" } else { "⊙" },
+                "📌",
                 self.pinned,
                 cx.listener(Self::toggle_pin),
             ))

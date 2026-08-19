@@ -4,6 +4,7 @@ pub enum AppCommand {
     OpenSettings,
     Quit,
     ReloadConfig,
+    CloseEmbeddedSettings,
     Retranslate {
         text: String,
         source_lang: String,
