@@ -39,6 +39,8 @@ xattr -cr "/Applications/Small Window Translator.app"
 
 Then open it. Right-click → Open also works once the bundle is ad-hoc signed. Notarization needs an Apple Developer ID.
 
+Windows SmartScreen or Defender may call the unsigned NSIS installer malware. That is a **false positive**: the build is not signed, and the app uses a global hotkey plus selected-text capture. Allow it with **More info → Run anyway**, or add an exclusion in Windows Security. Submit the file to Microsoft if you want the reputation cleared: [https://www.microsoft.com/wdsi/filesubmission](https://www.microsoft.com/wdsi/filesubmission). A lasting fix is an Authenticode certificate (`package.metadata.packager.windows.certificate-thumbprint`).
+
 ### From source
 
 Needs a recent stable Rust (edition 2024).
