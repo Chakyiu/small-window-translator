@@ -13,6 +13,7 @@ pub struct Config {
     pub source_lang: String,
     pub target_lang: String,
     pub ipc_port: u16,
+    pub start_at_login: bool,
     pub deepl: DeepLConfig,
     pub openai: OpenAiConfig,
     pub libre: LibreConfig,
@@ -26,6 +27,7 @@ impl Default for Config {
             source_lang: "auto".to_string(),
             target_lang: "zh".to_string(),
             ipc_port: DEFAULT_IPC_PORT,
+            start_at_login: false,
             deepl: DeepLConfig::default(),
             openai: OpenAiConfig::default(),
             libre: LibreConfig::default(),
@@ -129,6 +131,13 @@ impl Config {
             }
         }
         Self::default()
+    }
+
+    pub fn has_saved_file() -> bool {
+        Self::config_path()
+            .map(|p| p.exists())
+            .unwrap_or(false)
+            || Self::legacy_config_path().is_some_and(|p| p.exists())
     }
 
     pub fn load_from(path: &Path) -> Result<Self> {

@@ -21,10 +21,12 @@ use tray_icon::{
     menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem},
 };
 
-pub fn run() {
+pub fn run(open_settings: bool) {
     let config = Config::load();
     let (tx, rx) = mpsc::channel::<AppCommand>();
-    let _ = tx.send(AppCommand::OpenSettings);
+    if open_settings {
+        let _ = tx.send(AppCommand::OpenSettings);
+    }
 
     ipc::start_server(config.ipc_port, tx.clone());
 

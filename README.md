@@ -15,7 +15,7 @@ Select text in any app, press a hotkey, get a small popup with translations.
 - Providers (run in parallel): **DeepL**, **OpenAI-compatible**, **LibreTranslate**, unofficial **Google** (off by default)
 - Speech-to-text (mic → Whisper `/v1/audio/transcriptions`)
 - Text-to-speech (system voice: `say` / SAPI / espeak)
-- Settings window: hotkey, languages, keys, IPC port
+- Settings window: hotkey, start at login, languages, keys, IPC port
 - Tray menu: Translate selection, Settings, Quit
 - Local trigger for Wayland and scripts (`swtrans translate-selection`)
 
@@ -65,7 +65,7 @@ On macOS, `gpui` is built with the `macos-blade` backend so you do not need a fu
 
 ## Usage
 
-1. Start `swtrans`. Settings opens on first launch; the app stays in the tray.
+1. Start `swtrans`. Settings opens on first launch; the app stays in the tray. Enable **Start at login** in General if you want it after reboot.
 2. Add at least one provider key (or enable unofficial Google).
 3. Select text in another app and press **Alt+D** (or the hotkey you recorded).
 4. In the popup: edit the query, pick languages, copy, speak, or dictate.

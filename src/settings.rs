@@ -1,3 +1,4 @@
+use crate::autostart;
 use crate::config::Config;
 use crate::permissions;
 use crate::theme;
@@ -82,6 +83,8 @@ impl SettingsView {
         embedded: bool,
     ) -> Self {
         let perm = permissions::current_status();
+        let mut config = config;
+        config.start_at_login = autostart::is_enabled();
         Self {
             focus: cx.focus_handle(),
             field_focus: cx.focus_handle(),
@@ -135,7 +138,14 @@ impl SettingsView {
         match self.config.save() {
             Ok(path) => {
                 self.dirty = false;
-                self.status = format!("Saved {}", path.display()).into();
+                match autostart::set_enabled(self.config.start_at_login) {
+                    Ok(()) => {
+                        self.status = format!("Saved {}", path.display()).into();
+                    }
+                    Err(err) => {
+                        self.status = format!("Saved, but start at login failed: {err}").into();
+                    }
+                }
                 let _ = self.tx.send(AppCommand::ReloadConfig);
             }
             Err(err) => {
@@ -252,6 +262,17 @@ impl SettingsView {
 
     fn toggle_google(&mut self, _: &gpui::MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.config.google.enabled = !self.config.google.enabled;
+        self.mark_dirty();
+        cx.notify();
+    }
+
+    fn toggle_start_at_login(
+        &mut self,
+        _: &gpui::MouseUpEvent,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.config.start_at_login = !self.config.start_at_login;
         self.mark_dirty();
         cx.notify();
     }
@@ -482,6 +503,19 @@ impl SettingsView {
             .child(ui::subtitle(
                 "Select text in any app, then press the hotkey.",
             ))
+            .child(
+                ui::card()
+                    .child(ui::label("STARTUP"))
+                    .child(ui::toggle(
+                        "start-at-login",
+                        "Start at login",
+                        self.config.start_at_login,
+                        cx.listener(Self::toggle_start_at_login),
+                    ))
+                    .child(ui::subtitle(
+                        "Launch swtrans in the tray when you log in.",
+                    )),
+            )
             .child(ui::banner(
                 if self.permission_ok {
                     ui::BannerKind::Ok

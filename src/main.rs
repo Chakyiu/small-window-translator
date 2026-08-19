@@ -1,4 +1,5 @@
 mod app;
+mod autostart;
 mod capture;
 mod command;
 mod config;
@@ -33,13 +34,14 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        Some("--hidden" | "--minimized" | "--autostart") => app::run(false),
         Some("--help" | "-h" | "help") => print_help(),
         Some(other) => {
             eprintln!("Unknown command: {other}");
             print_help();
             std::process::exit(2);
         }
-        None => app::run(),
+        None => app::run(!crate::config::Config::has_saved_file()),
     }
 }
 
