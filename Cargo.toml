@@ -1,6 +1,6 @@
 [package]
 name = "swtrans"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 description = "Small Window Translator — select-text translator for macOS, Windows, and Linux"
 license = "MIT OR Apache-2.0"
@@ -77,7 +77,7 @@ digest-algorithm = "sha256"
 timestamp-url = "http://timestamp.digicert.com"
 
 [package.metadata.packager.nsis]
-install-mode = "currentUser"
+installer-mode = "currentUser"
 
 [package.metadata.packager.linux]
 generate-desktop-entry = true
