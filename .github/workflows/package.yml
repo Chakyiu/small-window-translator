@@ -22,9 +22,9 @@ jobs:
           - os: macos-latest
             label: macos-aarch64
             formats: app,dmg
-          - os: macos-13
-            label: macos-x86_64
-            formats: app,dmg
+          # - os: macos-13
+          #   label: macos-x86_64
+          #   formats: app,dmg
           - os: windows-latest
             label: windows-x86_64
             formats: nsis

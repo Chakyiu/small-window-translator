@@ -1,6 +1,6 @@
 [package]
 name = "swtrans"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "Small Window Translator — select-text translator for macOS, Windows, and Linux"
 license = "MIT OR Apache-2.0"
