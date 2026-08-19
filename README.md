@@ -31,7 +31,13 @@ GitHub Actions packages installers when you push a `v*.*.*` tag, or from **Actio
 | Windows x64 / ARM64         | NSIS `.exe`           |
 | Linux x64 / ARM64           | `.AppImage` or `.deb` |
 
-Unsigned macOS builds are blocked by Gatekeeper until you sign and notarize.
+macOS builds are **ad-hoc signed**, not notarized. Apple Silicon otherwise reports the app as **damaged**. After you copy it to `/Applications`:
+
+```bash
+xattr -cr "/Applications/Small Window Translator.app"
+```
+
+Then open it. Right-click → Open also works once the bundle is ad-hoc signed. Notarization needs an Apple Developer ID.
 
 ### From source
 
@@ -132,4 +138,4 @@ Output: `target/packager/`. Icons: `python3 scripts/gen-icon.py`.
 
 ## License
 
-MIT OR Apache-2.0.
+MIT

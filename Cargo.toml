@@ -60,6 +60,7 @@ main = true
 background-app = true
 minimum-system-version = "11.0"
 info-plist-path = "resources/Info.plist"
+signing-identity = "-"
 
 [package.metadata.packager.linux]
 generate-desktop-entry = true
