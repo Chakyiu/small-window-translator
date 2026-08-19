@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>dev.swtrans.app</string>
+	<key>CFBundleName</key>
+	<string>swtrans</string>
+	<key>CFBundleDisplayName</key>
+	<string>Small Window Translator</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAccessibilityUsageDescription</key>
+	<string>Small Window Translator needs Accessibility to read the text you have selected so it can translate it.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Small Window Translator uses the microphone to turn speech into text for translation.</string>
+</dict>
+</plist>
