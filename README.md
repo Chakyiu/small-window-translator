@@ -2,7 +2,7 @@
 
 Select text in any app, press a hotkey, get a small popup with translations.
 
-**swtrans** is a Rust desktop translator for **macOS, Windows, and Linux**. It is written from scratch (GPUI, not Electron), and licensed MIT OR Apache-2.0.
+**swtrans** is a Rust desktop translator for **macOS, Windows, and Linux**. It is written from scratch (GPUI, not Electron), and licensed MIT.
 
 <p align="center">
   <img src="resources/icons/128x128.png" width="64" height="64" alt="Small Window Translator icon">
