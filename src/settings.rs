@@ -1,5 +1,5 @@
 use crate::autostart;
-use crate::config::Config;
+use crate::config::{Config, DEFAULT_HOTKEY};
 use crate::permissions;
 use crate::theme;
 use crate::translate;
@@ -538,7 +538,7 @@ impl SettingsView {
                         "hotkey-field",
                         "Select-translate",
                         self.config.hotkey.clone(),
-                        "Alt+D",
+                        DEFAULT_HOTKEY,
                         self.active == Field::Hotkey,
                         cx.listener(|this, ev, window, cx| {
                             this.focus_field(Field::Hotkey, ev, window, cx)

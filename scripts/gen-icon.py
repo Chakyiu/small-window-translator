@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write the bilingual dictionary mark as PNG icons for cargo-packager."""
+"""Write the bilingual dictionary mark as PNG and Windows ICO icons."""
 
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def draw(size: int) -> list[list[tuple[int, int, int, int]]]:
     return px
 
 
-def write_png(path: Path, px: list[list[tuple[int, int, int, int]]]) -> None:
+def png_bytes(px: list[list[tuple[int, int, int, int]]]) -> bytes:
     h = len(px)
     w = len(px[0])
     raw = b"".join(b"\x00" + bytes(c for x in row for c in x) for row in px)
@@ -82,7 +82,7 @@ def write_png(path: Path, px: list[list[tuple[int, int, int, int]]]) -> None:
             + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
         )
 
-    png = b"".join(
+    return b"".join(
         [
             b"\x89PNG\r\n\x1a\n",
             chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)),
@@ -90,7 +90,57 @@ def write_png(path: Path, px: list[list[tuple[int, int, int, int]]]) -> None:
             chunk(b"IEND", b""),
         ]
     )
-    path.write_bytes(png)
+
+
+def write_png(path: Path, px: list[list[tuple[int, int, int, int]]]) -> None:
+    path.write_bytes(png_bytes(px))
+
+
+def ico_dib(px: list[list[tuple[int, int, int, int]]]) -> bytes:
+    """32-bit BMP DIB with AND mask, as required inside an ICO."""
+    h = len(px)
+    w = len(px[0])
+    xor = bytearray()
+    for y in range(h - 1, -1, -1):
+        for x in range(w):
+            r, g, b, a = px[y][x]
+            xor.extend((b, g, r, a))
+    row_bytes = ((w + 31) // 32) * 4
+    and_mask = bytearray()
+    for y in range(h - 1, -1, -1):
+        row = bytearray(row_bytes)
+        for x in range(w):
+            if px[y][x][3] == 0:
+                row[x // 8] |= 1 << (7 - (x % 8))
+        and_mask.extend(row)
+    header = struct.pack(
+        "<IIIHHIIIIII",
+        40,
+        w,
+        h * 2,
+        1,
+        32,
+        0,
+        len(xor) + len(and_mask),
+        0,
+        0,
+        0,
+        0,
+    )
+    return header + bytes(xor) + bytes(and_mask)
+
+
+def write_ico(path: Path, sizes: tuple[int, ...]) -> None:
+    images = [ico_dib(draw(size)) for size in sizes]
+    count = len(images)
+    offset = 6 + 16 * count
+    entries = bytearray()
+    for size, blob in zip(sizes, images):
+        w = 0 if size >= 256 else size
+        h = 0 if size >= 256 else size
+        entries += struct.pack("<BBBBHHII", w, h, 0, 0, 1, 32, len(blob), offset)
+        offset += len(blob)
+    path.write_bytes(struct.pack("<HHH", 0, 1, count) + bytes(entries) + b"".join(images))
 
 
 def main() -> None:
@@ -104,6 +154,9 @@ def main() -> None:
     ):
         write_png(OUT / name, draw(size))
         print(f"wrote {OUT / name}")
+    ico = OUT / "icon.ico"
+    write_ico(ico, (16, 32, 48, 256))
+    print(f"wrote {ico}")
 
 
 if __name__ == "__main__":

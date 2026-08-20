@@ -10,7 +10,7 @@ Select text in any app, press a hotkey, get a small popup with translations.
 
 ## Features
 
-- Global hotkey (default **Alt+D**) — capture the current selection and translate
+- Global hotkey (default **Ctrl+Alt+D**) — capture the current selection and translate
 - Floating query window: source text, language bar, stacked provider cards
 - Providers (run in parallel): **DeepL**, **OpenAI-compatible**, **LibreTranslate**, unofficial **Google** (off by default)
 - Speech-to-text (mic → Whisper `/v1/audio/transcriptions`)
@@ -69,7 +69,7 @@ On macOS, `gpui` is built with the `macos-blade` backend so you do not need a fu
 
 1. Start `swtrans`. Settings opens on first launch; the app stays in the tray. Enable **Start at login** in General if you want it after reboot.
 2. Add at least one provider key (or enable unofficial Google).
-3. Select text in another app and press **Alt+D** (or the hotkey you recorded).
+3. Select text in another app and press **Ctrl+Alt+D** (or the hotkey you recorded).
 4. In the popup: edit the query, pick languages, copy, speak, or dictate.
 
 | Control | Action                                                                 |
@@ -125,7 +125,7 @@ Saved as TOML via the `directories` crate (`swtrans/config.toml`):
 
 If you already used the old `sw-dict` name, the previous config file is still read until you Save (then it writes the new path).
 
-Defaults: hotkey `Alt+D`, source `auto`, target `zh`, IPC port `18765`.
+Defaults: hotkey `Ctrl+Alt+D`, source `auto`, target `zh`, IPC port `18765`.
 
 ## Package locally
 

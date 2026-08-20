@@ -56,6 +56,7 @@ icons = [
     "resources/icons/128x128@2x.png",
     "resources/icons/256x256.png",
     "resources/icons/512x512.png",
+    "resources/icons/icon.ico",
 ]
 copyright = "Copyright (c) 2026 chakyiu"
 homepage = "https://github.com/Chakyiu/small-window-translator"
@@ -78,6 +79,7 @@ timestamp-url = "http://timestamp.digicert.com"
 
 [package.metadata.packager.nsis]
 installer-mode = "currentUser"
+installer-icon = "resources/icons/icon.ico"
 
 [package.metadata.packager.linux]
 generate-desktop-entry = true

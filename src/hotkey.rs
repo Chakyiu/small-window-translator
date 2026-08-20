@@ -107,6 +107,13 @@ mod tests {
     }
 
     #[test]
+    fn parses_default_hotkey() {
+        let hotkey = parse_hotkey(crate::config::DEFAULT_HOTKEY).unwrap();
+        assert_eq!(hotkey.key, Code::KeyD);
+        assert!(hotkey.mods.contains(Modifiers::CONTROL | Modifiers::ALT));
+    }
+
+    #[test]
     fn parses_ctrl_shift_t() {
         let hotkey = parse_hotkey("ctrl+shift+t").unwrap();
         assert_eq!(hotkey.key, Code::KeyT);

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub const DEFAULT_IPC_PORT: u16 = 18765;
-pub const DEFAULT_HOTKEY: &str = "Alt+D";
+pub const DEFAULT_HOTKEY: &str = "Ctrl+Alt+D";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
