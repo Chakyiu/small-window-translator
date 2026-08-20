@@ -5,6 +5,7 @@ use crate::theme;
 use crate::translate;
 use crate::ui;
 use crate::update;
+use crate::vocab;
 use crate::AppCommand;
 use gpui::{
     App, Context, EventEmitter, FocusHandle, Focusable, KeyBinding, KeyDownEvent, SharedString,
@@ -348,10 +349,11 @@ impl SettingsView {
                 let mut s = self.config.ipc_port.to_string();
                 s.pop();
                 self.config.ipc_port = s.parse().unwrap_or(0);
+                self.mark_dirty();
             } else {
                 self.active_string().pop();
+                self.mark_dirty();
             }
-            self.mark_dirty();
             cx.notify();
             return;
         }
@@ -804,6 +806,15 @@ impl SettingsView {
                         "open-cfg",
                         "Open config file",
                         cx.listener(Self::open_config),
+                    )),
+            )
+            .child(
+                ui::card()
+                    .child(ui::label("SAVED WORDS"))
+                    .child(ui::subtitle(
+                        vocab::db_path()
+                            .map(|p| p.display().to_string())
+                            .unwrap_or_else(|_| "(unknown)".into()),
                     )),
             )
     }

@@ -34,12 +34,14 @@ fn handle_client(mut stream: TcpStream, tx: &Sender<AppCommand>) {
     };
     let req = String::from_utf8_lossy(&buf[..n]);
     let first = req.lines().next().unwrap_or("");
-    let ok = if first.contains("/selection_translate") || first.contains("/translate-selection")
-    {
+    let ok = if first.contains("/selection_translate") || first.contains("/translate-selection") {
         let _ = tx.send(AppCommand::TranslateSelection);
         true
     } else if first.contains("/settings") || first.contains("/config") {
         let _ = tx.send(AppCommand::OpenSettings);
+        true
+    } else if first.contains("/words") || first.contains("/vocab") {
+        let _ = tx.send(AppCommand::OpenVocab);
         true
     } else {
         first.starts_with("GET / ") || first.starts_with("GET /HTTP")
@@ -60,6 +62,17 @@ pub fn trigger_settings() -> anyhow::Result<()> {
     let mut stream = TcpStream::connect(&addr)?;
     stream.set_read_timeout(Some(Duration::from_secs(2)))?;
     stream.write_all(b"GET /settings HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")?;
+    let mut _buf = Vec::new();
+    let _ = stream.read_to_end(&mut _buf);
+    Ok(())
+}
+
+pub fn trigger_words() -> anyhow::Result<()> {
+    let cfg = Config::load();
+    let addr = format!("127.0.0.1:{}", cfg.ipc_port);
+    let mut stream = TcpStream::connect(&addr)?;
+    stream.set_read_timeout(Some(Duration::from_secs(2)))?;
+    stream.write_all(b"GET /words HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")?;
     let mut _buf = Vec::new();
     let _ = stream.read_to_end(&mut _buf);
     Ok(())

@@ -19,6 +19,8 @@ mod translate;
 mod tts;
 mod ui;
 mod update;
+mod vocab;
+mod vocab_page;
 
 pub use command::AppCommand;
 
@@ -28,6 +30,14 @@ fn main() {
         Some("settings") => {
             attach_cli_console();
             if let Err(err) = ipc::trigger_settings() {
+                eprintln!("swtrans: could not reach the running app ({err})");
+                eprintln!("Start `swtrans` first.");
+                std::process::exit(1);
+            }
+        }
+        Some("words") | Some("vocab") => {
+            attach_cli_console();
+            if let Err(err) = ipc::trigger_words() {
                 eprintln!("swtrans: could not reach the running app ({err})");
                 eprintln!("Start `swtrans` first.");
                 std::process::exit(1);
@@ -69,6 +79,7 @@ swtrans — Small Window Translator
 Usage:
   swtrans                      Start the app (opens Settings, stays in tray)
   swtrans settings             Open Settings on a running instance
+  swtrans words                Open saved words on a running instance
   swtrans translate-selection  Trigger select-translate (Wayland / scripts)
   swtrans --help               Show this help
 

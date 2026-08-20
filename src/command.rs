@@ -2,9 +2,11 @@
 pub enum AppCommand {
     TranslateSelection,
     OpenSettings,
+    OpenVocab,
     Quit,
     ReloadConfig,
     CloseEmbeddedSettings,
+    CloseEmbeddedVocab,
     Retranslate {
         text: String,
         source_lang: String,

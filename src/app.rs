@@ -6,6 +6,7 @@ use crate::ipc;
 use crate::permissions;
 use crate::popup::{self, PopupView};
 use crate::settings::{self, SettingsView};
+use crate::vocab_page::{self, VocabView};
 use crate::theme;
 use crate::translate;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
@@ -34,19 +35,21 @@ pub fn run(open_settings: bool) {
         permissions::become_accessory();
         popup::bind_keys(cx);
         settings::bind_keys(cx);
+        vocab_page::bind_keys(cx);
         cx.on_action(|_: &QuitApp, cx| cx.quit());
         cx.bind_keys([gpui::KeyBinding::new("cmd-q", QuitApp, None)]);
         cx.bind_keys([gpui::KeyBinding::new("ctrl-q", QuitApp, None)]);
 
         let tray = build_tray();
-        let (tray_icon, translate_id, settings_id, quit_id) = match tray {
+        let (tray_icon, translate_id, settings_id, vocab_id, quit_id) = match tray {
             Some(pack) => (
                 Some(pack.icon),
                 Some(pack.translate_id),
                 Some(pack.settings_id),
+                Some(pack.vocab_id),
                 Some(pack.quit_id),
             ),
-            None => (None, None, None, None),
+            None => (None, None, None, None, None),
         };
         let manager = GlobalHotKeyManager::new().ok();
         let registered = manager
@@ -79,11 +82,13 @@ pub fn run(open_settings: bool) {
                             config,
                             popup: None,
                             settings: None,
+                            vocab: None,
                             _hotkeys: manager,
                             current_hotkey: registered,
                             _tray: tray_icon,
                             translate_id,
                             settings_id,
+                            vocab_id,
                             quit_id,
                         };
                         hub.start_loop(cx);
@@ -103,11 +108,13 @@ struct Hub {
     config: Config,
     popup: Option<WindowHandle<PopupView>>,
     settings: Option<WindowHandle<SettingsView>>,
+    vocab: Option<WindowHandle<VocabView>>,
     _hotkeys: Option<GlobalHotKeyManager>,
     current_hotkey: Option<global_hotkey::hotkey::HotKey>,
     _tray: Option<TrayIcon>,
     translate_id: Option<tray_icon::menu::MenuId>,
     settings_id: Option<tray_icon::menu::MenuId>,
+    vocab_id: Option<tray_icon::menu::MenuId>,
     quit_id: Option<tray_icon::menu::MenuId>,
 }
 
@@ -156,6 +163,8 @@ impl Hub {
                 .is_some_and(|id| id == event.id())
             {
                 let _ = self.tx.send(AppCommand::OpenSettings);
+            } else if self.vocab_id.as_ref().is_some_and(|id| id == event.id()) {
+                let _ = self.tx.send(AppCommand::OpenVocab);
             } else if self.quit_id.as_ref().is_some_and(|id| id == event.id()) {
                 let _ = self.tx.send(AppCommand::Quit);
             }
@@ -166,6 +175,7 @@ impl Hub {
         match cmd {
             AppCommand::TranslateSelection => self.translate_selection(cx),
             AppCommand::OpenSettings => self.open_settings(cx),
+            AppCommand::OpenVocab => self.open_vocab(cx),
             AppCommand::Quit => cx.quit(),
             AppCommand::Retranslate {
                 text,
@@ -176,6 +186,13 @@ impl Hub {
                 if let Some(popup) = self.popup {
                     let _ = popup.update(cx, |view, window, cx| {
                         view.hide_settings(window, cx);
+                    });
+                }
+            }
+            AppCommand::CloseEmbeddedVocab => {
+                if let Some(popup) = self.popup {
+                    let _ = popup.update(cx, |view, window, cx| {
+                        view.hide_vocab(window, cx);
                     });
                 }
             }
@@ -296,6 +313,16 @@ impl Hub {
         self.show_settings_window(cx);
     }
 
+    fn open_vocab(&mut self, cx: &mut Context<Self>) {
+        if let Some(handle) = self.popup {
+            let _ = handle.update(cx, |view, window, cx| {
+                view.show_embedded_words(window, cx);
+            });
+            return;
+        }
+        self.show_vocab_window(cx);
+    }
+
     fn show_settings_window(&mut self, cx: &mut Context<Self>) {
         if let Some(handle) = &self.settings {
             if handle
@@ -340,6 +367,51 @@ impl Hub {
             )
             .ok();
         self.settings = handle;
+    }
+
+    fn show_vocab_window(&mut self, cx: &mut Context<Self>) {
+        if let Some(handle) = &self.vocab {
+            if handle
+                .update(cx, |_view, window, _cx| {
+                    window.activate_window();
+                })
+                .is_ok()
+            {
+                return;
+            }
+        }
+
+        let tx = self.tx.clone();
+        let bounds = Bounds::centered(
+            None,
+            size(px(theme::POPUP_WIDTH), px(theme::POPUP_HEIGHT)),
+            cx,
+        );
+        let handle = cx
+            .open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(bounds)),
+                    titlebar: Some(TitlebarOptions {
+                        title: Some("Saved words".into()),
+                        appears_transparent: false,
+                        ..Default::default()
+                    }),
+                    focus: true,
+                    show: true,
+                    kind: WindowKind::Normal,
+                    is_movable: true,
+                    is_resizable: true,
+                    window_min_size: Some(size(px(320.0), px(400.0))),
+                    ..Default::default()
+                },
+                |window, cx| {
+                    let view = cx.new(|cx| VocabView::new(cx, tx));
+                    window.focus(&view.focus_handle(cx));
+                    view
+                },
+            )
+            .ok();
+        self.vocab = handle;
     }
 }
 
@@ -411,19 +483,23 @@ struct TrayPack {
     icon: TrayIcon,
     translate_id: tray_icon::menu::MenuId,
     settings_id: tray_icon::menu::MenuId,
+    vocab_id: tray_icon::menu::MenuId,
     quit_id: tray_icon::menu::MenuId,
 }
 
 fn build_tray() -> Option<TrayPack> {
     let translate = MenuItem::new("Translate selection", true, None);
     let settings = MenuItem::new("Settings", true, None);
+    let vocab = MenuItem::new("Saved words", true, None);
     let quit = MenuItem::new("Quit", true, None);
     let translate_id = translate.id().clone();
     let settings_id = settings.id().clone();
+    let vocab_id = vocab.id().clone();
     let quit_id = quit.id().clone();
     let menu = Menu::new();
     menu.append(&translate).ok()?;
     let _ = menu.append(&settings);
+    let _ = menu.append(&vocab);
     let _ = menu.append(&PredefinedMenuItem::separator());
     let _ = menu.append(&quit);
 
@@ -437,6 +513,7 @@ fn build_tray() -> Option<TrayPack> {
         icon,
         translate_id,
         settings_id,
+        vocab_id,
         quit_id,
     })
 }

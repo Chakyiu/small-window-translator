@@ -1,11 +1,13 @@
 use crate::capture::Selection;
 use crate::config::Config;
 use crate::settings::{SettingsEvent, SettingsView};
+use crate::vocab_page::{VocabEvent, VocabView};
 use crate::stt;
 use crate::theme;
 use crate::tts;
 use crate::translate::{self, TranslateResult};
 use crate::ui;
+use crate::vocab::{self, NewWord};
 use crate::AppCommand;
 use gpui::{
     App, ClipboardItem, Context, Entity, FocusHandle, Focusable, KeyBinding, KeyDownEvent,
@@ -52,12 +54,16 @@ pub struct PopupView {
     can_dismiss: bool,
     tx: Sender<AppCommand>,
     show_settings: bool,
-    pinned_before_settings: bool,
+    show_vocab: bool,
+    pinned_before_overlay: bool,
     settings: Option<Entity<SettingsView>>,
+    vocab: Option<Entity<VocabView>>,
     _settings_sub: Option<Subscription>,
+    _vocab_sub: Option<Subscription>,
     recording: bool,
     mic: Option<stt::Session>,
     speaking: Option<SpeakTarget>,
+    saved: bool,
     _activation: Option<Subscription>,
 }
 
@@ -107,7 +113,7 @@ impl PopupView {
             translate::detect_source(&query, "auto")
         };
 
-        Self {
+        let mut popup = Self {
             focus: cx.focus_handle(),
             query,
             source_lang: source_lang.to_string(),
@@ -127,20 +133,27 @@ impl PopupView {
             can_dismiss: false,
             tx,
             show_settings: false,
-            pinned_before_settings: false,
+            show_vocab: false,
+            pinned_before_overlay: false,
             settings: None,
+            vocab: None,
             _settings_sub: None,
+            _vocab_sub: None,
             recording: false,
             mic: None,
             speaking: None,
+            saved: false,
             _activation: Some(activation),
-        }
+        };
+        popup.refresh_saved();
+        popup
     }
 
     pub fn set_results(&mut self, results: Vec<TranslateResult>, cx: &mut Context<Self>) {
         let ok = results.iter().filter(|r| r.output.is_ok()).count();
         self.status = format!("{ok}/{} providers", results.len()).into();
         self.results = results;
+        self.refresh_saved();
         cx.notify();
     }
 
@@ -159,6 +172,10 @@ impl PopupView {
         }
         if self.show_settings {
             self.hide_settings(window, cx);
+            return;
+        }
+        if self.show_vocab {
+            self.hide_vocab(window, cx);
             return;
         }
         if self.picker != Picker::None {
@@ -194,9 +211,16 @@ impl PopupView {
         self.show_embedded_settings(window, cx);
     }
 
+    fn open_words(&mut self, _: &gpui::MouseUpEvent, window: &mut Window, cx: &mut Context<Self>) {
+        self.show_embedded_words(window, cx);
+    }
+
     pub fn show_embedded_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.show_vocab {
+            self.hide_vocab(window, cx);
+        }
         self.can_dismiss = false;
-        self.pinned_before_settings = self.pinned;
+        self.pinned_before_overlay = self.pinned;
         self.picker = Picker::None;
         let config = Config::load();
         let tx = self.tx.clone();
@@ -218,6 +242,29 @@ impl PopupView {
         cx.notify();
     }
 
+    pub fn show_embedded_words(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.show_settings {
+            self.hide_settings(window, cx);
+        }
+        self.can_dismiss = false;
+        self.pinned_before_overlay = self.pinned;
+        self.picker = Picker::None;
+        let tx = self.tx.clone();
+        let entity = cx.new(|cx| VocabView::embedded(cx, tx));
+        self._vocab_sub = Some(cx.subscribe_in(
+            &entity,
+            window,
+            |this, _, _: &VocabEvent, window, cx| {
+                this.hide_vocab(window, cx);
+            },
+        ));
+        self.vocab = Some(entity.clone());
+        self.show_vocab = true;
+        window.resize(size(px(theme::POPUP_WIDTH), px(theme::POPUP_HEIGHT)));
+        cx.focus_view(&entity, window);
+        cx.notify();
+    }
+
     pub fn hide_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.show_settings {
             return;
@@ -225,7 +272,22 @@ impl PopupView {
         self.show_settings = false;
         self.settings = None;
         self._settings_sub = None;
-        self.pinned = self.pinned_before_settings;
+        self.finish_overlay(window, cx);
+    }
+
+    pub fn hide_vocab(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.show_vocab {
+            return;
+        }
+        self.show_vocab = false;
+        self.vocab = None;
+        self._vocab_sub = None;
+        self.finish_overlay(window, cx);
+    }
+
+    fn finish_overlay(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.pinned = self.pinned_before_overlay;
+        self.refresh_saved();
         window.resize(size(px(theme::POPUP_WIDTH), px(theme::POPUP_HEIGHT)));
         window.focus(&self.focus);
         cx.notify();
@@ -508,6 +570,72 @@ impl PopupView {
             &self.source_lang
         }
     }
+
+    fn refresh_saved(&mut self) {
+        self.saved = vocab::is_saved(&self.query, self.display_source_code(), &self.target_lang);
+    }
+
+    fn save_entry(&self, translation: String, provider: &str) -> NewWord {
+        NewWord {
+            word: self.query.clone(),
+            translation,
+            source_lang: self.display_source_code().to_string(),
+            target_lang: self.target_lang.clone(),
+            provider: provider.to_string(),
+        }
+    }
+
+    fn best_translation(&self) -> (String, &'static str) {
+        for result in &self.results {
+            if let Ok(text) = &result.output {
+                if !text.trim().is_empty() {
+                    return (text.clone(), result.provider);
+                }
+            }
+        }
+        (String::new(), "")
+    }
+
+    fn toggle_save_query(&mut self, _: &gpui::MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
+        let (translation, provider) = self.best_translation();
+        self.toggle_save(translation, provider, cx);
+    }
+
+    fn toggle_save_result(
+        &mut self,
+        index: usize,
+        _: &gpui::MouseUpEvent,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(TranslateResult {
+            provider,
+            output: Ok(text),
+        }) = self.results.get(index)
+        else {
+            return;
+        };
+        let provider = *provider;
+        let text = text.clone();
+        self.toggle_save(text, provider, cx);
+    }
+
+    fn toggle_save(&mut self, translation: String, provider: &str, cx: &mut Context<Self>) {
+        match vocab::toggle(self.save_entry(translation, provider)) {
+            Ok(saved) => {
+                self.saved = saved;
+                self.status = if saved {
+                    "Saved word".into()
+                } else {
+                    "Removed saved word".into()
+                };
+            }
+            Err(err) => {
+                self.status = format!("Save: {err}").into();
+            }
+        }
+        cx.notify();
+    }
 }
 
 impl Focusable for PopupView {
@@ -518,6 +646,23 @@ impl Focusable for PopupView {
 
 impl Render for PopupView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.show_vocab {
+            if let Some(vocab) = self.vocab.clone() {
+                return ui::page()
+                    .id("popup")
+                    .key_context("Popup")
+                    .track_focus(&self.focus)
+                    .on_action(cx.listener(Self::dismiss))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_h(px(0.))
+                            .w_full()
+                            .child(vocab),
+                    )
+                    .into_any_element();
+            }
+        }
         if self.show_settings {
             if let Some(settings) = self.settings.clone() {
                 return ui::page()
@@ -601,6 +746,12 @@ impl PopupView {
                     .flex()
                     .flex_row()
                     .gap_1()
+                    .child(ui::icon_btn(
+                        "popup-open-words",
+                        "📖",
+                        false,
+                        cx.listener(Self::open_words),
+                    ))
                     .child(ui::icon_btn(
                         "popup-open-settings",
                         "☰",
@@ -691,6 +842,12 @@ impl PopupView {
                                 "⧉",
                                 false,
                                 cx.listener(Self::copy_query),
+                            ))
+                            .child(ui::icon_btn(
+                                "save-query",
+                                if self.saved { "★" } else { "☆" },
+                                self.saved,
+                                cx.listener(Self::toggle_save_query),
                             ))
                             .child(
                                 div()
@@ -948,6 +1105,14 @@ impl PopupView {
                                         "⧉",
                                         false,
                                         copy,
+                                    ))
+                                    .child(ui::icon_btn(
+                                        ("save", index),
+                                        if self.saved { "★" } else { "☆" },
+                                        self.saved,
+                                        cx.listener(move |this, ev, window, cx| {
+                                            this.toggle_save_result(index, ev, window, cx);
+                                        }),
                                     )),
                             )
                         })
