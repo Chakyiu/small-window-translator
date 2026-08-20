@@ -266,6 +266,18 @@ impl SettingsView {
         cx.notify();
     }
 
+    fn toggle_youdao(&mut self, _: &gpui::MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
+        self.config.youdao.enabled = !self.config.youdao.enabled;
+        self.mark_dirty();
+        cx.notify();
+    }
+
+    fn toggle_apple(&mut self, _: &gpui::MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
+        self.config.apple.enabled = !self.config.apple.enabled;
+        self.mark_dirty();
+        cx.notify();
+    }
+
     fn toggle_start_at_login(
         &mut self,
         _: &gpui::MouseUpEvent,
@@ -710,6 +722,34 @@ impl SettingsView {
                         }),
                     )),
             )
+            .child(
+                ui::card()
+                    .child(ui::label("YOUDAO DICTIONARY"))
+                    .child(ui::subtitle(
+                        "Unofficial dict.youdao.com lookup. No API key. Word entries and sentence translation.",
+                    ))
+                    .child(ui::toggle(
+                        "youdao-on",
+                        "Enabled",
+                        self.config.youdao.enabled,
+                        cx.listener(Self::toggle_youdao),
+                    )),
+            )
+            .when(cfg!(target_os = "macos"), |el| {
+                el.child(
+                    ui::card()
+                        .child(ui::label("APPLE DICTIONARY"))
+                        .child(ui::subtitle(
+                            "macOS Dictionary.app data. No API key. Best for single words.",
+                        ))
+                        .child(ui::toggle(
+                            "apple-on",
+                            "Enabled",
+                            self.config.apple.enabled,
+                            cx.listener(Self::toggle_apple),
+                        )),
+                )
+            })
             .child(
                 ui::card()
                     .child(ui::label("GOOGLE (UNOFFICIAL)"))

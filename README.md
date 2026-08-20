@@ -12,7 +12,7 @@ Select text in any app, press a hotkey, get a small popup with translations.
 
 - Global hotkey (default **Ctrl+Alt+D**) — capture the current selection and translate
 - Floating query window: source text, language bar, stacked provider cards
-- Providers (run in parallel): **DeepL**, **OpenAI-compatible**, **LibreTranslate**, unofficial **Google** (off by default)
+- Providers (run in parallel): **Youdao Dictionary**, **Apple Dictionary** (macOS), **DeepL**, **OpenAI-compatible**, **LibreTranslate**, unofficial **Google** (off by default)
 - Speech-to-text (mic → Whisper `/v1/audio/transcriptions`)
 - Text-to-speech (system voice: `say` / SAPI / espeak)
 - Settings window: hotkey, start at login, languages, keys, IPC port
@@ -68,7 +68,7 @@ On macOS, `gpui` is built with the `macos-blade` backend so you do not need a fu
 ## Usage
 
 1. Start `swtrans`. Settings opens on first launch; the app stays in the tray. Enable **Start at login** in General if you want it after reboot.
-2. Add at least one provider key (or enable unofficial Google).
+2. Youdao is on by default. Add other provider keys, or enable unofficial Google, if you want them.
 3. Select text in another app and press **Ctrl+Alt+D** (or the hotkey you recorded).
 4. In the popup: edit the query, pick languages, copy, speak, or dictate.
 
@@ -94,6 +94,8 @@ Enable any combination. Empty keys are skipped.
 
 | Provider            | Notes                                                                                                                 |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Youdao Dictionary   | Unofficial `dict.youdao.com` lookup. No key. Word entries plus sentence translation.                                  |
+| Apple Dictionary    | **macOS only.** Local Dictionary.app data via Dictionary Services. No key. Best for single words.                     |
 | DeepL               | API key. Optional Pro endpoint.                                                                                       |
 | OpenAI-compatible   | `/v1/chat/completions` for translate; `/v1/audio/transcriptions` for STT. Works with OpenAI, OpenRouter, Ollama, etc. |
 | LibreTranslate      | Self-hosted or public instance URL.                                                                                   |

@@ -40,6 +40,8 @@ pub fn provider_color(name: &str) -> Rgba {
         "OpenAI" => rgb(0x10a37f),
         "LibreTranslate" => rgb(0xe85d04),
         "Google" => rgb(0x4285f4),
+        "Youdao" => rgb(0xe31c23),
+        "Dictionary" => rgb(0x007aff),
         _ => rgb(0x636366),
     }
 }

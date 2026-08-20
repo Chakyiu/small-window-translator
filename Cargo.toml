@@ -61,7 +61,7 @@ icons = [
 copyright = "Copyright (c) 2026 chakyiu"
 homepage = "https://github.com/Chakyiu/small-window-translator"
 license-file = "LICENSE"
-long-description = "Select text in any app, press a hotkey, and translate it. DeepL, OpenAI-compatible, LibreTranslate, and unofficial Google."
+long-description = "Select text in any app, press a hotkey, and translate it. Youdao Dictionary, Apple Dictionary (macOS), DeepL, OpenAI-compatible, LibreTranslate, and unofficial Google."
 
 [[package.metadata.packager.binaries]]
 path = "swtrans"

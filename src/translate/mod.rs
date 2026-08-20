@@ -2,10 +2,13 @@ use crate::config::Config;
 use anyhow::Result;
 use std::thread;
 
+#[cfg(target_os = "macos")]
+mod apple;
 mod deepl;
 mod google;
 mod libre;
 mod openai;
+mod youdao;
 
 #[derive(Debug, Clone)]
 pub struct TranslateRequest {
@@ -182,12 +185,23 @@ pub fn translate_all(cfg: &Config, text: &str) -> Vec<TranslateResult> {
         let req = req.clone();
         jobs.push((translator.id(), Box::new(move || translator.translate(&req))));
     }
+    if cfg.youdao.enabled {
+        let translator = youdao::YoudaoDict;
+        let req = req.clone();
+        jobs.push((translator.id(), Box::new(move || translator.translate(&req))));
+    }
+    #[cfg(target_os = "macos")]
+    if cfg.apple.enabled {
+        let translator = apple::AppleDictionary;
+        let req = req.clone();
+        jobs.push((translator.id(), Box::new(move || translator.translate(&req))));
+    }
 
     if jobs.is_empty() {
         return vec![TranslateResult {
             provider: "setup",
             output: Err(
-                "No provider is ready. Open Settings, add an API key or enable Google (off by default)."
+                "No provider is ready. Open Settings, enable Youdao, or add an API key."
                     .into(),
             ),
         }];

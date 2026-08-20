@@ -18,6 +18,8 @@ pub struct Config {
     pub openai: OpenAiConfig,
     pub libre: LibreConfig,
     pub google: GoogleConfig,
+    pub youdao: YoudaoConfig,
+    pub apple: AppleConfig,
 }
 
 impl Default for Config {
@@ -32,6 +34,8 @@ impl Default for Config {
             openai: OpenAiConfig::default(),
             libre: LibreConfig::default(),
             google: GoogleConfig::default(),
+            youdao: YoudaoConfig::default(),
+            apple: AppleConfig::default(),
         }
     }
 }
@@ -104,6 +108,32 @@ pub struct GoogleConfig {
 impl Default for GoogleConfig {
     fn default() -> Self {
         Self { enabled: false }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct YoudaoConfig {
+    /// Unofficial dict.youdao.com lookup. Default on: no key required.
+    pub enabled: bool,
+}
+
+impl Default for YoudaoConfig {
+    fn default() -> Self {
+        Self { enabled: true }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AppleConfig {
+    /// macOS Dictionary Services. Ignored on other platforms.
+    pub enabled: bool,
+}
+
+impl Default for AppleConfig {
+    fn default() -> Self {
+        Self { enabled: true }
     }
 }
 
@@ -188,6 +218,8 @@ mod tests {
         assert_eq!(loaded.target_lang, "ja");
         assert_eq!(loaded.deepl.api_key, "secret");
         assert!(!loaded.google.enabled);
+        assert!(loaded.youdao.enabled);
+        assert!(loaded.apple.enabled);
         let _ = fs::remove_dir_all(dir);
     }
 }
