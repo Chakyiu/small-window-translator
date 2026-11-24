@@ -1,0 +1,44 @@
+name: CI
+
+# Verifies the Rust project on every push/PR to master (README: `cargo run --release` from source).
+# Linux only here — README documents Ubuntu build deps explicitly; multi-platform installers
+# are built in package.yml on version tags.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+    name: Linux (x86_64)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ci-linux
+
+      - name: Install Linux packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config clang \
+            libx11-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libxdo-dev libxi-dev libxrandr-dev \
+            libwayland-dev libasound2-dev \
+            libayatana-appindicator3-dev libfontconfig1-dev libfreetype6-dev \
+            libssl-dev
+
+      - name: cargo build --release
+        run: cargo build --release
+
+      - name: cargo test
+        run: cargo test
