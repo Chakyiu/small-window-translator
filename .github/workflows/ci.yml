@@ -1,0 +1,40 @@
+# Verifies the Rust project on every push/PR to master (Linux x86_64).
+# Release packaging for all platforms runs in package.yml on tags / workflow_dispatch.
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    name: build and test (ubuntu-22.04)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Linux packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config clang \
+            libx11-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxdo-dev \
+            libasound2-dev libayatana-appindicator3-dev \
+            libwayland-dev libfontconfig1-dev
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Test
+        run: cargo test --workspace
