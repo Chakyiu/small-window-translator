@@ -48,6 +48,8 @@ pub fn provider_color(name: &str) -> Rgba {
 
 pub const POPUP_WIDTH: f32 = 400.0;
 pub const POPUP_HEIGHT: f32 = 580.0;
+/// ~5 lines of `text_sm` (0.875rem × φ line-height at 16px rem).
+pub const RESULT_BODY_MAX_H: f32 = 115.0;
 pub const SETTINGS_WIDTH: f32 = 760.0;
 pub const SETTINGS_HEIGHT: f32 = 560.0;
 pub const SETTINGS_SIDEBAR: f32 = 168.0;

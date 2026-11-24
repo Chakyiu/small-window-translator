@@ -1069,22 +1069,32 @@ impl PopupView {
                                 })
                                 .child(
                                     div()
-                                        .text_sm()
-                                        .text_color(if ok {
-                                            theme::text()
-                                        } else {
-                                            theme::danger()
-                                        })
-                                        .child(primary.to_string()),
-                                )
-                                .when(!extra.is_empty() && ok, |el| {
-                                    el.child(
-                                        div()
-                                            .text_sm()
-                                            .text_color(theme::muted())
-                                            .child(extra.to_string()),
-                                    )
-                                }),
+                                        .id(("result-body", index))
+                                        .max_h(px(theme::RESULT_BODY_MAX_H))
+                                        .min_h(px(0.))
+                                        .overflow_y_scroll()
+                                        .flex()
+                                        .flex_col()
+                                        .gap_1()
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .text_color(if ok {
+                                                    theme::text()
+                                                } else {
+                                                    theme::danger()
+                                                })
+                                                .child(primary.to_string()),
+                                        )
+                                        .when(!extra.is_empty() && ok, |el| {
+                                            el.child(
+                                                div()
+                                                    .text_sm()
+                                                    .text_color(theme::muted())
+                                                    .child(extra.to_string()),
+                                            )
+                                        }),
+                                ),
                         )
                         .when(ok, |el| {
                             el.child(
