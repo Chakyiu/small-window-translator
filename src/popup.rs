@@ -327,9 +327,13 @@ impl PopupView {
         else {
             return;
         };
-        let text = text.clone();
+        let (primary, _) = split_translation(text);
+        let spoken = primary.to_string();
+        if spoken.is_empty() {
+            return;
+        }
         let lang = self.target_lang.clone();
-        self.toggle_speak(SpeakTarget::Result(index), &text, &lang, cx);
+        self.toggle_speak(SpeakTarget::Result(index), &spoken, &lang, cx);
     }
 
     fn toggle_speak(&mut self, target: SpeakTarget, text: &str, lang: &str, cx: &mut Context<Self>) {

@@ -122,20 +122,44 @@ fn macos_voices() -> &'static [Voice] {
 }
 
 fn parse_say_voices(raw: &str) -> Vec<Voice> {
-    raw.lines()
-        .filter_map(|line| {
-            let line = line.trim();
-            if line.is_empty() {
-                return None;
-            }
-            let (name, rest) = line.split_once(char::is_whitespace)?;
-            let locale = rest.split_whitespace().next()?;
-            Some(Voice {
-                name: name.to_string(),
-                locale: locale.to_string(),
-            })
-        })
-        .collect()
+    raw.lines().filter_map(parse_say_voice_line).collect()
+}
+
+/// Parses one line from `say -v ?`. Apple uses both legacy (`Albert en_US`) and
+/// labeled names (`Eddy (Chinese (Taiwan)) zh_TW`); locale is always a `xx_XX` token.
+fn parse_say_voice_line(line: &str) -> Option<Voice> {
+    let line = line.split('#').next()?.trim();
+    if line.is_empty() {
+        return None;
+    }
+    for (idx, word) in line.split_whitespace().enumerate() {
+        if !is_say_locale_token(word) {
+            continue;
+        }
+        let name = line
+            .split_whitespace()
+            .take(idx)
+            .collect::<Vec<_>>()
+            .join(" ");
+        if name.is_empty() {
+            return None;
+        }
+        return Some(Voice {
+            name,
+            locale: word.to_string(),
+        });
+    }
+    None
+}
+
+fn is_say_locale_token(token: &str) -> bool {
+    let Some((lang, region)) = token.split_once('_') else {
+        return false;
+    };
+    lang.len() == 2
+        && lang.chars().all(|c| c.is_ascii_lowercase())
+        && !region.is_empty()
+        && region.chars().all(|c| c.is_ascii_alphabetic())
 }
 
 fn locale_prefix(lang: &str) -> Option<String> {
@@ -276,11 +300,25 @@ Alex                en_US    # Most people recognize me by my voice.
 Tingting            zh_CN    # ...
 Sinji               zh_TW    # ...
 Kyoko               ja_JP    # ...
+Eddy (Chinese (Taiwan)) zh_TW    # 你好，我叫Eddy。
+Daniel (English (UK)) en_GB    # Hello! My name is Daniel.
 ";
         let voices = parse_say_voices(raw);
         assert_eq!(voices[0].name, "Alex");
         assert_eq!(voices[1].locale, "zh_CN");
         assert_eq!(voices[2].locale, "zh_TW");
+        assert_eq!(voices[4].name, "Eddy (Chinese (Taiwan))");
+        assert_eq!(voices[4].locale, "zh_TW");
+        assert_eq!(voices[5].name, "Daniel (English (UK))");
+        assert_eq!(voices[5].locale, "en_GB");
+    }
+
+    #[test]
+    fn say_locale_tokens() {
+        assert!(is_say_locale_token("en_US"));
+        assert!(is_say_locale_token("zh_TW"));
+        assert!(!is_say_locale_token("(English"));
+        assert!(!is_say_locale_token("UK)"));
     }
 
     #[test]
