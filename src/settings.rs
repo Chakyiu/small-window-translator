@@ -61,9 +61,11 @@ pub struct SettingsView {
     tx: Sender<AppCommand>,
     embedded: bool,
     update_checking: bool,
+    update_installing: bool,
     update_message: SharedString,
     update_url: Option<String>,
     update_open_label: Option<&'static str>,
+    update_installable: Option<update::InstallableUpdate>,
 }
 
 impl EventEmitter<SettingsEvent> for SettingsView {}
@@ -100,12 +102,14 @@ impl SettingsView {
             tx,
             embedded,
             update_checking: false,
+            update_installing: false,
             update_message: SharedString::from(format!(
                 "Installed version {}",
                 update::current_version()
             )),
             update_url: None,
             update_open_label: None,
+            update_installable: None,
         }
     }
 
@@ -182,13 +186,14 @@ impl SettingsView {
     }
 
     fn check_update(&mut self, _: &gpui::MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.update_checking {
+        if self.update_checking || self.update_installing {
             return;
         }
         self.update_checking = true;
         self.update_message = "Checking for updates…".into();
         self.update_url = None;
         self.update_open_label = None;
+        self.update_installable = None;
         cx.notify();
         cx.spawn(async move |this, cx| {
             let result = cx
@@ -201,12 +206,55 @@ impl SettingsView {
                     Ok(outcome) => {
                         this.update_url = outcome.open_url().map(str::to_string);
                         this.update_open_label = outcome.open_label();
+                        this.update_installable =
+                            outcome.installable().cloned();
                         this.update_message = outcome.message().into();
                     }
                     Err(err) => {
                         this.update_url = None;
                         this.update_open_label = None;
+                        this.update_installable = None;
                         this.update_message = format!("Update check failed: {err}").into();
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    fn install_update(
+        &mut self,
+        _: &gpui::MouseUpEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(plan) = self.update_installable.clone() else {
+            return;
+        };
+        if self.update_checking || self.update_installing {
+            return;
+        }
+        self.update_installing = true;
+        self.update_message = "Downloading update…".into();
+        cx.notify();
+        let tx = self.tx.clone();
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move { update::download_and_apply(&plan) })
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                this.update_installing = false;
+                match result {
+                    Ok(()) => {
+                        this.update_message =
+                            "Update will finish after the app closes…".into();
+                        let _ = tx.send(AppCommand::Quit);
+                    }
+                    Err(err) => {
+                        this.update_message =
+                            format!("Update failed: {err}").into();
                     }
                 }
                 cx.notify();
@@ -590,13 +638,26 @@ impl SettingsView {
                                 "check-update",
                                 if self.update_checking {
                                     "Checking…"
+                                } else if self.update_installing {
+                                    "Installing…"
                                 } else {
                                     "Check for update"
                                 },
                                 cx.listener(Self::check_update),
                             ))
-                            .when(self.update_url.is_some(), |el| {
+                            .when(self.update_installable.is_some(), |el| {
                                 el.child(ui::primary_button(
+                                    "install-update",
+                                    if self.update_installing {
+                                        "Installing…"
+                                    } else {
+                                        "Install and restart"
+                                    },
+                                    cx.listener(Self::install_update),
+                                ))
+                            })
+                            .when(self.update_url.is_some(), |el| {
+                                el.child(ui::ghost_button(
                                     "open-update",
                                     self.update_open_label.unwrap_or("Open download page"),
                                     cx.listener(Self::open_update_page),

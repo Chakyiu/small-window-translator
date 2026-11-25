@@ -37,6 +37,12 @@ fn launcher() -> Result<auto_launch::AutoLaunch> {
         .context("Could not configure start at login")
 }
 
+/// Path used for start-at-login and in-place updates (`.app` bundle, AppImage, or binary).
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub fn app_location() -> Result<PathBuf> {
+    launch_path()
+}
+
 fn launch_path() -> Result<PathBuf> {
     if let Ok(appimage) = std::env::var("APPIMAGE") {
         let path = PathBuf::from(appimage);
