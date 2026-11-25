@@ -7,6 +7,7 @@ pub enum AppCommand {
     ReloadConfig,
     CloseEmbeddedSettings,
     CloseEmbeddedVocab,
+    PopupClosed,
     Retranslate {
         text: String,
         source_lang: String,
