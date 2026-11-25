@@ -93,8 +93,10 @@ impl PopupView {
         let activation = cx.observe_window_activation(window, |this, window, cx| {
             if this.can_dismiss && !this.pinned && !window.is_window_active() {
                 this.can_dismiss = false;
-                cx.defer_in(window, |_, window, _cx| {
+                let tx = this.tx.clone();
+                cx.defer_in(window, move |_, window, _cx| {
                     window.remove_window();
+                    let _ = tx.send(AppCommand::PopupClosed);
                 });
             }
         });
@@ -183,6 +185,7 @@ impl PopupView {
             cx.notify();
             return;
         }
+        let _ = self.tx.send(AppCommand::PopupClosed);
         window.remove_window();
     }
 
@@ -194,6 +197,7 @@ impl PopupView {
 
     fn close_click(&mut self, _: &gpui::MouseUpEvent, window: &mut Window, _cx: &mut Context<Self>) {
         tts::stop();
+        let _ = self.tx.send(AppCommand::PopupClosed);
         window.remove_window();
     }
 

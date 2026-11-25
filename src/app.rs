@@ -196,6 +196,9 @@ impl Hub {
                     });
                 }
             }
+            AppCommand::PopupClosed => {
+                self.popup = None;
+            }
             AppCommand::ReloadConfig => {
                 self.config = Config::load();
                 if let Some(manager) = self._hotkeys.as_ref() {
@@ -305,20 +308,30 @@ impl Hub {
 
     fn open_settings(&mut self, cx: &mut Context<Self>) {
         if let Some(handle) = self.popup {
-            let _ = handle.update(cx, |view, window, cx| {
-                view.show_embedded_settings(window, cx);
-            });
-            return;
+            let embedded = handle
+                .update(cx, |view, window, cx| {
+                    view.show_embedded_settings(window, cx);
+                })
+                .is_ok();
+            if embedded {
+                return;
+            }
+            self.popup = None;
         }
         self.show_settings_window(cx);
     }
 
     fn open_vocab(&mut self, cx: &mut Context<Self>) {
         if let Some(handle) = self.popup {
-            let _ = handle.update(cx, |view, window, cx| {
-                view.show_embedded_words(window, cx);
-            });
-            return;
+            let embedded = handle
+                .update(cx, |view, window, cx| {
+                    view.show_embedded_words(window, cx);
+                })
+                .is_ok();
+            if embedded {
+                return;
+            }
+            self.popup = None;
         }
         self.show_vocab_window(cx);
     }
