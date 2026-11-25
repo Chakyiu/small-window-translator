@@ -29,6 +29,7 @@ toml = "1.1"
 tray-icon = "0.24"
 auto-launch = "0.5"
 urlencoding = "2"
+zip = "2.2"
 whatlang = "0.18"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 
