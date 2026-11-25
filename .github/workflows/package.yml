@@ -66,8 +66,29 @@ jobs:
           tool: cargo-packager@0.11.7
 
       - name: Package
+        if: runner.os != 'macOS'
         shell: bash
         run: cargo packager --release --formats "${{ matrix.formats }}"
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          detach_mounted_volumes() {
+            hdiutil info 2>/dev/null | awk '/^\/dev\/disk/ {print $1}' | while read -r dev; do
+              hdiutil detach "$dev" -force 2>/dev/null || true
+            done
+          }
+          for attempt in 1 2 3; do
+            detach_mounted_volumes
+            if cargo packager --release --formats "${{ matrix.formats }}"; then
+              exit 0
+            fi
+            echo "::warning::cargo packager attempt ${attempt} failed; retrying"
+            sleep 20
+          done
+          exit 1
 
       - name: Zip macOS .app
         if: runner.os == 'macOS'
